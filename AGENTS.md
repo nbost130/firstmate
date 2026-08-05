@@ -295,7 +295,7 @@ The path's worker, automated gates, and captain approval remain authoritative:
 - **local-only** has the worker stop with a clean ready branch, then waits for the configured merge authority before firstmate uses the guarded fast-forward merge path.
 
 Delivery mode and `yolo` are orthogonal.
-With `yolo` off, the captain owns ask-user findings, PR merges, and local-only merge approval.
+With `yolo` off, the captain owns ask-user findings and local-only merge approval, while section 1 hard rule 2 owns whether a standing posture recorded for this home already authorizes a routine PR merge without a new per-PR captain word.
 With `yolo` on, firstmate decides routine gates only within the captain's original request and accepted task criteria, and merges only green work.
 Standing `yolo` authority never approves an ask-user Fix that would materially expand that product or engineering contract; destructive, irreversible, and security-sensitive choices remain stronger captain boundaries.
 Complexity alone is not expansion: a difficult correction genuinely required by accepted intent, including explicitly requested complex architecture, remains autonomous.

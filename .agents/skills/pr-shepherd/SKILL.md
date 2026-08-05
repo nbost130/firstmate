@@ -89,8 +89,8 @@ This section is this skill's single owner of who performs project writes, and ev
 
 Under firstmate, every project-mutating git action is crewmate-only work in an isolated task worktree: editing, committing, checking out a project branch to change it, fetching or otherwise mutating a project clone, rebasing, updating a branch against its base, and any push including `--force-with-lease`.
 Firstmate dispatches or steers a crewmate for those actions, then reads the result through `gh-axi` and read-only git to verify it.
-That includes `git fetch`, which takes ref locks in the shared object store and can fail a live crewmate's rebase or push, so firstmate never fetches into a project clone or into a worktree a crewmate is working in.
-Ask the crewmate that owns the worktree to fetch, or wait until no crewmate is live there.
+That includes `git fetch`, which takes ref locks in the shared object store and can fail a live crewmate's rebase or push, so firstmate never fetches a project clone or task worktree at all.
+There is no idle-worktree exception: when inventory needs refs that are not already local, ask the crewmate that owns the worktree to fetch, and otherwise read the head through `gh-axi` instead.
 Outside firstmate, perform those actions yourself on an isolated checkout of the PR branch.
 
 ---
@@ -169,7 +169,7 @@ gh pr diff <n>
 For any finding that claims "unused", "dead component", or "zero importers", check importers against the real head.
 
 Under firstmate this inventory stays read-only against the remote head: `gh-axi pr diff <n>` and the forge's file listing answer most importer questions without touching a clone.
-When a tree-wide search genuinely needs a local tree, delegate it to the crewmate that owns the worktree or wait until that worktree is free, per the project-write boundary, and never fetch to make the search possible.
+When a tree-wide search genuinely needs a local tree, delegate it to the crewmate that owns the worktree, per the project-write boundary, and never fetch to make the search possible.
 A `git grep` against refs that are already local stays read-only and is fine either way.
 
 Standalone, or as the crewmate in its own worktree:
