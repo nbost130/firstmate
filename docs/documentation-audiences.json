@@ -157,15 +157,15 @@
       "audience": "agent-runtime"
     },
     {
+      "path": ".agents/skills/pr-shepherd/SKILL.md",
+      "audience": "agent-runtime"
+    },
+    {
       "path": ".agents/skills/process-event-sources/SKILL.md",
       "audience": "agent-runtime"
     },
     {
       "path": ".agents/skills/project-management/SKILL.md",
-      "audience": "agent-runtime"
-    },
-    {
-      "path": ".agents/skills/pr-shepherd/SKILL.md",
       "audience": "agent-runtime"
     },
     {
