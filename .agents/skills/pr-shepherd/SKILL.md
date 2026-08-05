@@ -30,11 +30,13 @@ Merge authority is an input to this skill, not something the skill grants itself
 
 Phase 7 may merge only when at least one of these authority paths holds for the PR in front of you:
 
-- (a) A recorded captain-authorized standing shepherd posture for this home that covers merging shepherded PRs, under which `/pr-shepherd` is invoked.
+- (a) A standing captain-authorized shepherd or merge posture recorded in this home's `data/captain.md`, or in an inherited `data/captain-shared.md` when secondmate inheritance applies.
 - (b) The project's captain-approved `yolo` posture, for routine green merges within its scope.
 - (c) A current explicit captain word to merge that PR.
 
-Invoking `/pr-shepherd` is not by itself authority path (a); the standing posture has to already exist in the home's captain-private records.
+Path (a) is satisfied only by reading an explicit recorded preference in one of those two files that authorizes shepherded merges in clear wording.
+Read the file rather than inferring the posture: absence of such an entry makes path (a) false, and merge then needs path (b) or path (c).
+Invoking `/pr-shepherd` is not by itself authority path (a).
 When none of (a), (b), or (c) holds, finish the pipeline and stop at the merge-ready report, exactly as if `--no-merge` had been passed.
 `--no-merge` forces report-only even when authority exists.
 Merging is never the default for an environment that has granted none of these paths.
@@ -63,7 +65,7 @@ Plain language "shepherd", "drive to land", or "get it merged" selects the full 
 5. Never discard unlanded work to clear a path.
 6. Dead-code and wrong-surface findings are blockers: if a review says the change is on an unused component, verify importers with `git grep` or search before disposing as NIT.
 7. Do not equate "I approved it" with "reviews addressed", because your approval does not clear bot BLOCKERs or open threads.
-8. Under firstmate, never edit, commit, or push project code yourself; `AGENTS.md` hard rule 1 reserves that for crewmates.
+8. Under firstmate, never run a state-changing command under `projects/` or in any project worktree yourself, including edit, commit, checkout-for-edit, rebase, branch update, and any push; `AGENTS.md` hard rule 1 reserves those for crewmates, and the project-write boundary section below is this skill's single owner of how that applies here.
 
 ## Pipeline overview
 
@@ -80,6 +82,15 @@ Under firstmate, use `gh-axi` for GitHub operations per `AGENTS.md`, and consult
 For a task-owned PR merge, use `bin/fm-pr-merge.sh <task-id> <url>` so `pr=` and `pr_head=` are recorded for the teardown landed-work test; never call a lower-level merge command around that guard.
 `gh-axi api` takes REST paths, so the Phase 1b GraphQL `reviewThreads` pagination is the one call that stays on raw `gh api graphql`; re-check `gh-axi api --help` first in case it has gained a GraphQL form.
 Outside firstmate, raw `gh` and `gh api` are fine and the standalone examples below apply directly.
+
+## Project-write boundary
+
+This section is this skill's single owner of who performs project writes, and every phase below defers to it.
+
+Under firstmate, every project-mutating git action is crewmate-only work in an isolated task worktree: editing, committing, checking out a project branch to change it, fetching or otherwise mutating a project clone, rebasing, updating a branch against its base, and any push including `--force-with-lease`.
+Firstmate dispatches or steers a crewmate for those actions, then reads the result through `gh-axi` and read-only git to verify it.
+A `git fetch` inside a disposable task worktree that the active ship task already owns is acceptable, because that worktree is the crewmate's; creating new state in the primary project clone is not.
+Outside firstmate, perform those actions yourself on an isolated checkout of the PR branch.
 
 ---
 
@@ -154,7 +165,10 @@ gh pr diff <n> --name-only
 gh pr diff <n>
 ```
 
-For any finding that claims "unused", "dead component", or "zero importers", check importers against the real head:
+For any finding that claims "unused", "dead component", or "zero importers", check importers against the real head.
+
+Keep this inventory read-only wherever it can be: `gh-axi pr diff <n>` and the forge's file listing answer many importer questions without touching a clone.
+When a tree-wide search is genuinely needed under firstmate, run it in the task worktree the active ship task already owns or ask a crewmate, per the project-write boundary, rather than fetching into the primary project clone.
 
 ```bash
 git fetch origin <headRefName>
@@ -201,8 +215,7 @@ Build a disposition table for every item from Phase 1.
 
 ### Who makes the code fix
 
-Under firstmate, every code fix on the PR branch is delegated to a crewmate working in its own isolated task worktree, and firstmate steers, reviews dispositions, and verifies the pushed result.
-Outside firstmate, make the fix yourself on an isolated checkout of the PR branch and push normally.
+Code fixes follow the project-write boundary above: under firstmate a crewmate makes and pushes them in its own isolated task worktree while firstmate steers, reviews dispositions, and verifies the pushed result.
 
 ### Required code verification for "fixed"
 
@@ -229,8 +242,7 @@ Any incomplete row means not ready.
    - Default unknown checks to critical.
 2. On failure, pull the logs, get the fix made, and re-wait.
    - Read failures with `gh-axi run view <id>` under firstmate or `gh run view <id> --log-failed` standalone, or open the job URL.
-   - Under firstmate, delegate the branch fix to a crewmate in its own isolated task worktree per Phase 3, and never push project code yourself.
-   - Standalone, fix on an isolated checkout of the PR branch and push.
+   - Make the branch fix through the project-write boundary above.
 3. Do not claim green while critical checks are pending or failing.
 4. Allow one re-run for a single suspected flake, then fix the root cause.
 
@@ -243,6 +255,8 @@ Any incomplete row means not ready.
 1. Resolve a CONFLICTING `mergeable` or `mergeStateStatus` by rebasing onto the current base, bottom of the stack first.
 2. When behind main but clean, prefer an update or rebase so CI matches the landing base.
 3. For a stack, the upper PR's diff against main must not re-introduce lower PR content after the lower one merges.
+
+Steps 1 and 2 are project writes, so they follow the project-write boundary above: under firstmate, dispatch or steer a crewmate to rebase or update the branch and push, and read the resulting mergeability back through `gh-axi` rather than rebasing the project branch yourself.
 
 **Gate 5:** The PR is MERGEABLE, or a known platform lag is recorded with a recheck, and the stack is consistent.
 
@@ -296,7 +310,7 @@ Use the project's merge path:
 - Standalone: `gh pr merge <n> --squash` or the repo default method.
 
 Prefer the normal merge path and do not reach for `--admin`.
-`--admin` bypasses branch protection the forge is actively enforcing, so it is allowed only when gates 3-5 already pass and either a recorded standing captain shepherd posture explicitly covers admin merge for that case, or the captain gives a current explicit instruction naming the admin merge for that PR.
+`--admin` bypasses branch protection the forge is actively enforcing, so it is allowed only when gates 3-5 already pass and either the recorded standing posture behind authority path (a) explicitly covers admin merge for that case, or the captain gives a current explicit instruction naming the admin merge for that PR.
 An agent's own judgement that a required review is stale is never sufficient.
 
 After merge, confirm `state=MERGED`, report the full URL, and give a one-line outcome.
@@ -310,7 +324,7 @@ Under firstmate, `AGENTS.md` section 7 owns landing, fleet sync, and teardown fr
 
 | Concern | Rule |
 |---------|------|
-| Project edits | Delegate to a crewmate in its own isolated task worktree; firstmate never edits, commits, or pushes project code (hard rule 1). |
+| Project writes | Every project-mutating git action, including rebase and any push, is crewmate-only per the project-write boundary section (hard rule 1). |
 | PR open from ship | After a worker reports green, still run Phases 1-3 before considering a merge. |
 | Bot formal CHANGES_REQUESTED | Block merge until a re-run clears it or code fixes land. |
 | Worker status lines | `AGENTS.md` section 7 owns the ready signal; a ship worker still reports `done: PR <url> checks green` when CI goes green, and `done: PR <url> merged` follows only once this skill has actually landed it. |
@@ -374,9 +388,15 @@ gh pr comment N --body "..."
 gh pr merge N --squash                  # only under authority and green gates
 ```
 
-Shared:
+Read-only, either path:
 
 ```bash
 git grep -n Symbol origin/branch -- '*.ts' '*.tsx'
+```
+
+Project writes, standalone or crewmate only per the project-write boundary:
+
+```bash
+git rebase origin/<base>
 git push --force-with-lease             # only if a rebase rewrote history
 ```
