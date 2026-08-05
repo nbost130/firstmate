@@ -89,7 +89,8 @@ This section is this skill's single owner of who performs project writes, and ev
 
 Under firstmate, every project-mutating git action is crewmate-only work in an isolated task worktree: editing, committing, checking out a project branch to change it, fetching or otherwise mutating a project clone, rebasing, updating a branch against its base, and any push including `--force-with-lease`.
 Firstmate dispatches or steers a crewmate for those actions, then reads the result through `gh-axi` and read-only git to verify it.
-A `git fetch` inside a disposable task worktree that the active ship task already owns is acceptable, because that worktree is the crewmate's; creating new state in the primary project clone is not.
+That includes `git fetch`, which takes ref locks in the shared object store and can fail a live crewmate's rebase or push, so firstmate never fetches into a project clone or into a worktree a crewmate is working in.
+Ask the crewmate that owns the worktree to fetch, or wait until no crewmate is live there.
 Outside firstmate, perform those actions yourself on an isolated checkout of the PR branch.
 
 ---
@@ -167,8 +168,11 @@ gh pr diff <n>
 
 For any finding that claims "unused", "dead component", or "zero importers", check importers against the real head.
 
-Keep this inventory read-only wherever it can be: `gh-axi pr diff <n>` and the forge's file listing answer many importer questions without touching a clone.
-When a tree-wide search is genuinely needed under firstmate, run it in the task worktree the active ship task already owns or ask a crewmate, per the project-write boundary, rather than fetching into the primary project clone.
+Under firstmate this inventory stays read-only against the remote head: `gh-axi pr diff <n>` and the forge's file listing answer most importer questions without touching a clone.
+When a tree-wide search genuinely needs a local tree, delegate it to the crewmate that owns the worktree or wait until that worktree is free, per the project-write boundary, and never fetch to make the search possible.
+A `git grep` against refs that are already local stays read-only and is fine either way.
+
+Standalone, or as the crewmate in its own worktree:
 
 ```bash
 git fetch origin <headRefName>
@@ -220,7 +224,7 @@ Code fixes follow the project-write boundary above: under firstmate a crewmate m
 ### Required code verification for "fixed"
 
 1. Confirm the change is on the PR head rather than only in a local dirty tree.
-2. Re-read the resolved path on `origin/<head>` after the push lands.
+2. Re-read the resolved path at the new head after the push lands, through `gh-axi pr diff` or the forge under firstmate, and on `origin/<head>` standalone.
 3. For dead-surface claims, re-run the importer search after the fix.
 
 ### Cap and re-run
@@ -388,7 +392,7 @@ gh pr comment N --body "..."
 gh pr merge N --squash                  # only under authority and green gates
 ```
 
-Read-only, either path:
+Read-only, either path, against refs that are already local:
 
 ```bash
 git grep -n Symbol origin/branch -- '*.ts' '*.tsx'
@@ -397,6 +401,7 @@ git grep -n Symbol origin/branch -- '*.ts' '*.tsx'
 Project writes, standalone or crewmate only per the project-write boundary:
 
 ```bash
+git fetch origin <headRefName>
 git rebase origin/<base>
 git push --force-with-lease             # only if a rebase rewrote history
 ```
