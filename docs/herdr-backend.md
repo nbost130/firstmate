@@ -678,9 +678,13 @@ This prevents closing the workspace's last tab before a replacement exists.
 ### Stale agent registrations
 
 A registration alone never proves an agent.
+### Stale agent registrations
+
+A registration alone never proves an agent.
 Herdr keeps a Pi registration after the Pi process has exited to a plain shell, whenever a nested interactive shell sits under the pane's top shell.
 In that case `agent get` still reports `agent=pi` with its last status.
 That nested shell is the crew shape `treehouse get` leaves behind (measured on Herdr 0.9.0 - [verification](verification/runtime-backends.md) "Stale agent registration"; upstream issue #4115).
+A lease-capable crewmate spawn `cd`s into the leased worktree before launching, so this pattern also appears in spawn abort cleanup trees.
 
 So before a registered agent counts as live, the pane classifier reads `pane process-info` and the real process table.
 It uses the shared harness-process classifier in `bin/fm-agent-process-lib.sh`, the same rule the tmux adapter proves liveness with:
@@ -696,171 +700,322 @@ The settle window exists because an idle shell transiently hosts prompt helpers 
 The first agent or shell sample in that window decides.
 
 No registered status outranks the process view, because an agent killed mid-turn leaves `working` behind just as a quit one leaves `idle`.
-The native busy verdict is verified the same way, so a shell-only pane never reads busy.
+The native busy verdict is verified the same way, so a shell-only pane never reads busy.An unreadable or unparseable process view reads `unknown`, which refuses lifecycle verbs and recovery rather than trusting the registration.
 
-### Process-view version support
 
-The `pane process-info` subcommand that this process-level proof depends on is present in every supported release client from the 0.7.1 floor upward (measured 2026-09-10 on the pinned 0.7.1, 0.7.3, 0.7.4, and 0.7.5 release clients - [verification](verification/runtime-backends.md) "Stale agent registration").
-The response shape the adapter parses (`result.type` of `pane_process_info`, `process_info.shell_pid`, and `foreground_processes` entries carrying `name`, `argv0`, `argv`, and `cmdline`) is verified live only on Herdr 0.9.0.
-The idle-shell proof's narrower parse was previously verified on 0.7.5.
-A server response below 0.9.0 has not been measured for this parse.
-An unreadable or unparseable process view reads `unknown`, which refuses lifecycle verbs and recovery rather than trusting the registration.
 
 ### Agent-liveness probe
 
+
+
 The generic Herdr agent-liveness probe reuses that pane classifier, then applies one recovery-only exception.
 
+
+
 | Pane read | Probe verdict |
+
 | --- | --- |
+
 | A structurally gone pane, or a pane read from a session positively reported as having no running server | `missing` |
+
 | A restored agent-less shell, or a stale registration over a shell-only pane | `dead` |
+
 | A registered agent with a live process | `alive` |
+
 | Every other unexpected read | `unreadable` |
 
+
+
 Neither the stopped-server exception nor the stale-registration verdict widens husk detection or any close authority.
+
 Those paths still refuse an unreadable pane.
+
 A `stale-agent` pane is reused by recovery, never closed as a husk, because the shell it holds may be a nested worktree shell.
 
+
+
 Native registration still identifies Pi by name where tmux would see a generic interpreter.
+
 The process-level proof only decides whether that registration is backed by a running process.
+
 `tests/fm-backend-herdr-agent-exit-shell-e2e.test.sh` pins the live-Pi versus leftover-shell distinction.
+
 [`verification/runtime-backends.md`](verification/runtime-backends.md#agent-lifecycle-control) owns the versioned evidence.
 
+
+
 The session-start sweep and the watcher's dedicated secondmate liveness tick use this probe.
+
 Idle secondmates remain exempt from stale-pane escalation.
+
 [Secondmate endpoint recovery](architecture.md) owns the shared supervision mechanism.
+
+
 
 ## Agent status authority and relaunch
 
+
+
 A pane has ONE status authority, and for Pi with the integration installed that authority is the lifecycle hooks - Herdr then skips screen detection for the pane, which is the `full_lifecycle_hook_authority` reason `herdr agent explain` prints for it.
+
 That authority is bound to a session identity, and in the crew shape the registration outliving its process ([above](#restart-and-liveness-behavior)) is that same binding: the record stays, the agent it named is gone.
 
+
+
 An agent started FRESH in such a pane reports a new session and Herdr ignores its reports, so the pane stays frozen at whatever the previous agent last reported - a crewmate running its pipeline reads `idle` until its task ends, and nothing from outside repairs it (measured 2026-09-21 on Herdr 0.9.1 against a real Pi; `pane report-agent-session` and `pane report-agent` for `herdr:pi` are accepted without being applied unless the reporter is the registered pane agent, and `pane release-agent` on the stale record changes nothing).
+
 A fresh spawn never meets this: it gets a new pane with nothing bound.
 
+
+
 So a **relaunch** preserves the binding instead of fighting it: before the Pi-family launch line is composed, `bin/fm-spawn.sh` reads the pane's recorded session reference through `fm_backend_herdr_pane_agent_session_ref` and passes it back as Pi's own `--session <path-or-id>` (`relaunch_resume_args`; `bin/fm-control-lib.sh`'s `fm_control_relaunch_resume_flag` owns which adapters and which registration labels qualify).
+
 The replacement therefore starts on the exact identity the authority is bound to, and its `working`/`idle`/`blocked` reports land again.
+
 The reference is the endpoint's own record, never a guess about which session is recent, and only a `pi` label may supply it: a registration belonging to another adapter is ignored, as is an unreadable, missing, or malformed one, in which case the relaunch is the ordinary fresh session it always was.
+
 A relaunch that changes harness AWAY from Pi is not repaired by this and keeps the pre-existing behavior; only the adapter the authority belongs to can resume its session.
 
+
+
 The session file may not exist any more: Pi creates it at exactly that path, so the identity survives either way.
+
 The read grants no send, close, or lifecycle authority of its own - it is a read of Herdr's record.
+
 The portable halves are pinned by `tests/fm-backend-herdr.test.sh` (the read, against a canned CLI) and `tests/fm-control.test.sh` (the per-adapter rule), and `tests/fm-control-herdr-smoke.test.sh` exercises the relaunch path against the real binary; the versioned live measurement, including the reproduction and the resume that lifts it, is [`verification/runtime-backends.md`](verification/runtime-backends.md) "Pane status authority across a relaunch".
+
+
 
 ## Push events and polling fallback
 
+
+
 Protocol 16 can subscribe to `pane.agent_status_changed` over one bounded Unix-socket reader.
+
 `bin/fm-transition-lib.sh` owns the backend-neutral transition vocabulary and policy.
+
 The Herdr adapter subscribes before reconciling current levels, buffers edges during reconciliation, and returns fresh blocked transitions for this home's panes.
+
+
 
 The watcher maps the pane back to the task and skips these:
 
+
+
 - Secondmate endpoints.
+
 - Declared `paused:` waits, because the worker's declared wait already accounts for its quiet.
+
   It is left to the watcher's own bounded pause cadence.
+
 - Verified `captain-held` transfers.
+
   A captain-held transfer remains silent without rechecks while the away-posture record exists.
+
+
 
 ### Polling fallback
 
+
+
 The push path only shortens latency.
+
 Polling runs every cycle and remains the permanent fallback when any of these is unavailable:
 
+
+
 - Protocol 16.
+
 - The event schema.
+
 - Python.
+
 - The connection.
+
 - The subscription.
+
 - Repeated reader execution.
+
+
 
 There is still one watcher process; the event reader is a bounded child of that watcher.
 
+
+
 `tests/fm-backend-herdr-eventwait-smoke.test.sh`, `tests/fm-transition-lib.test.sh`, and `tests/fm-supervision-events.test.sh` cover capability, subscribe-then-reconcile ordering, dedupe, exemptions, and polling fallback.
+
+
 
 ## Away-mode supervisor support
 
+
+
 The away daemon supports tmux and Herdr supervisor panes only.
+
 It refuses Zellij, Orca, and cmux as supervisor backends rather than applying the wrong transport.
+
 For Herdr, target existence, native state, capture, composer state, and verified submit all route through the shared backend dispatcher and the explicit named-session CLI owner.
+
 The pane-independent max-defer alert is configured in [`wedge-alarm.md`](wedge-alarm.md).
+
+
 
 ### Where the daemon runs
 
+
+
 - Harnesses with native tracked background execution can run the daemon in their terminal.
+
 - Pi and pi-signed no longer launch the away daemon; their ordinary supervision session continues under the posture record.
+
 - A non-Pi home that runs the supervision host also skips the daemon for `/afk`; see [supervision-host.md](supervision-host.md).
+
 - For another harness without native tracked background execution, `bin/fm-afk-launch.sh` runs the daemon in a Herdr workspace, as described next.
+
+
 
 In that last case, `bin/fm-afk-launch.sh`:
 
+
+
 1. Creates a dedicated unfocused Herdr workspace.
+
 2. Runs the daemon there with an explicit supervisor target and backend.
+
 3. Records the exact daemon pane.
+
 4. Closes only that pane on stop.
 
+
+
 It never splits the captain's active tab and never uses shell `&`.
+
 Recovery reconciles only the recorded exact id.
+
+
 
 ### Stopping the daemon
 
+
+
 On stop:
 
+
+
 1. The daemon receives termination while `state/.afk` still exists, so its final flush can run.
+
 2. The recorded terminal is closed.
+
 3. The AFK flag is removed last.
+
+
 
 A fresh entry clears stale transient escalation caches, while durable queue and task records remain authoritative.
 
+
+
 ## Destructive lab safety
 
+
+
 Never use ambient `herdr server stop` for Firstmate verification.
+
 An environment-only session selection can silently reach a different running server.
+
 The ambient stop command has no explicit target.
 
+
+
 `bin/fm-herdr-lab.sh` is the sole supported lifecycle helper for isolated verification.
+
 The helper:
 
+
+
 - Provisions only non-default names beginning with `fm-lab-`.
+
 - Supplies an explicit `--session` Herdr option before any `--` delimiter in allowed task commands.
+
 - Refuses caller-supplied session flags and server/session lifecycle subcommands.
+
 - Performs destructive stop/delete only through its guarded lifecycle actions.
 
+
+
 Immediately before every destructive call it re-queries the named session and refuses empty, missing, literal `default`, or `default:true` identities.
+
 Its before/after tripwire requires the live default-session snapshot to remain byte-identical.
 
+
+
 The helper's header and `--help` own exact commands.
+
 Tests use thin compatibility wrappers in `tests/herdr-test-safety.sh` and never duplicate the destructive policy.
+
+
 
 ## Active limits
 
+
+
 - Presentation ordering needs protocol 16 and Python and is best-effort only.
+
 - Mutable labels can collide; they are never placement or destructive authority.
+
 - A Firstmate outside Herdr cannot resolve a launcher workspace, so a colliding home label refuses new spawns until the collision is cleared.
+
 - Ghost and placeholder recognition uses ANSI de-emphasis when available; an unstyled glyph row carrying trailing non-idle text fails safely to `unknown`.
+
 - Only tmux and Herdr can host the away-mode supervisor terminal.
+
+
 
 ## Regression entry points
 
+
+
 ```sh
+
 tests/fm-backend-herdr.test.sh
+
 tests/fm-composer-lib.test.sh
+
 tests/fm-herdr-submit-confirm-live-e2e.test.sh
+
 tests/fm-backend-herdr-smoke.test.sh
+
 tests/fm-backend-herdr-prune-safety-e2e.test.sh
+
 tests/fm-backend-herdr-respawn-idem-e2e.test.sh
+
 tests/fm-backend-herdr-workspace-per-home-e2e.test.sh
+
 tests/fm-backend-herdr-launcher-workspace-e2e.test.sh
+
 tests/fm-backend-herdr-presentation-e2e.test.sh
+
 tests/fm-backend-herdr-agent-exit-shell-e2e.test.sh
+
 tests/fm-herdr-pi-stale-registration-live-e2e.test.sh
+
 tests/fm-backend-herdr-eventwait-smoke.test.sh
+
 tests/fm-control-herdr-smoke.test.sh
+
 tests/fm-herdr-session-cleanup.test.sh
+
 tests/fm-herdr-session-cleanup-e2e.test.sh
+
 tests/fm-herdr-attached-viewer-live-e2e.test.sh
+
 tests/fm-afk-inject-herdr-e2e.test.sh
+
 tests/fm-afk-pi-herdr-return-e2e.test.sh
+
 ```
 
+
+
 Real Herdr tests use the named lab helper and default-session tripwire.
+
 [`verification/runtime-backends.md`](verification/runtime-backends.md#herdr) records the active version, CLI, projection, event, and lifecycle evidence without task-specific chronology.
