@@ -1,0 +1,3 @@
+PASS tmux-lease-abort
+PASS tmux-interactive-get-abort
+PASS herdr-lease-abort

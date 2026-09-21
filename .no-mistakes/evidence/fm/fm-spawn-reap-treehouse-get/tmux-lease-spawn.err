@@ -1,0 +1,2 @@
+warning: /tmp/fm-spawn-abort-live.suKAms/tmux-lease/home/data/abort-lease-aa1/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+error: treehouse get --lease did not enter an isolated worktree (last seen '/tmp/fm-spawn-abort-live.suKAms/tmux-lease/proj': it is the spawning project itself; spawning project '/tmp/fm-spawn-abort-live.suKAms/tmux-lease/proj')

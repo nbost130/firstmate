@@ -1,0 +1,3 @@
+treehouse get --help
+treehouse get --lease --lease-holder abort-lease-cc3
+treehouse return --force --if-lease-holder abort-lease-cc3 /tmp/fm-spawn-abort-live.suKAms/herdr-lease/proj

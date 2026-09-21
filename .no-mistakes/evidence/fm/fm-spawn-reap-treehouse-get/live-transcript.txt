@@ -1,0 +1,27 @@
+=== scenario: tmux lease abort ===
+tmux lease spawn status=1
+stdout=
+stderr=warning: /tmp/fm-spawn-abort-live.suKAms/tmux-lease/home/data/abort-lease-aa1/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches error: treehouse get --lease did not enter an isolated worktree (last seen '/tmp/fm-spawn-abort-live.suKAms/tmux-lease/proj': it is the spawning project itself; spawning project '/tmp/fm-spawn-abort-live.suKAms/tmux-lease/proj') 
+windows after lease abort: firstmate:bash
+our leftover gets after lease abort: none
+PASS tmux-lease-abort
+=== scenario: tmux interactive-get abort ===
+interactive get started=1 after 3 polls spawn_pid=2408608
+get pid=2409173 child pid=2409176
+tmux interactive spawn status=1
+stdout=
+stderr=warning: /tmp/fm-spawn-abort-live.suKAms/tmux-get/home/data/abort-get-bb2/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches error: treehouse get did not enter an isolated worktree within 60s (last seen '/tmp/fm-spawn-abort-live.suKAms/tmux-get/proj': it is the spawning project itself; spawning project '/tmp/fm-spawn-abort-live.suKAms/tmux-get/proj') 
+windows after interactive abort: firstmate:bash
+our leftover gets after interactive abort: none
+PASS tmux-interactive-get-abort
+=== scenario: herdr lab lease abort ===
+lab session=fm-lab-spawnabort-2423260-13223
+herdr lease spawn status=1
+stdout=
+stderr=warning: /tmp/fm-spawn-abort-live.suKAms/herdr-lease/home/data/abort-lease-cc3/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches error: treehouse get --lease did not enter an isolated worktree (last seen '/tmp/fm-spawn-abort-live.suKAms/herdr-lease/proj': it is the spawning project itself; spawning project '/tmp/fm-spawn-abort-live.suKAms/herdr-lease/proj') 
+our leftover gets after herdr lease abort: none
+PASS herdr-lease-abort
+=== results ===
+PASS tmux-lease-abort
+PASS tmux-interactive-get-abort
+PASS herdr-lease-abort
